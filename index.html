@@ -24,6 +24,7 @@
       const map = new mapboxgl.Map({
         container: "map",
         style: "mapbox://styles/vegard1990/cm799kjir000q01r3gofu7tad",
+        projection: 'mercator',
         center: [20.302734, 73.578167],
         zoom: 3,
       });
@@ -56,8 +57,8 @@
           type: "circle",
           source: "vessels",
           paint: {
-            "circle-radius": 6,
-            "circle-color": "#007cbf",
+            "circle-radius": 3,
+            "circle-color": "#fff600",
           },
         });
 
@@ -69,10 +70,10 @@
           layout: {
             "text-field": ["get", "shipName"],
             "text-offset": [0, 1.2],
-            "text-size": 12,
+            "text-size": 10,
           },
           paint: {
-            "text-color": "#000000",
+            "text-color": "#ffffff",
           },
         });
 
