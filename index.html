@@ -23,7 +23,7 @@
         "pk.eyJ1IjoidmVnYXJkMTk5MCIsImEiOiJjamtsYXdjZm4wMWljM3ZxcmUyOHJoNnBwIn0.sCjF-dZIu4TN21N0GhmFdg";
       const map = new mapboxgl.Map({
         container: "map",
-        style: "mapbox://styles/vegard1990/cm799kjir000q01r3gofu7tad",
+        style: "mapbox://styles/vegard1990/cm7b41c4u004w01s843uc7bsj",
         projection: 'mercator',
         center: [20.302734, 73.578167],
         zoom: 3,
@@ -57,8 +57,9 @@
           type: "circle",
           source: "vessels",
           paint: {
-            "circle-radius": 3,
+            "circle-radius": 2,
             "circle-color": "#fff600",
+            'circle-emissive-strength': 1
           },
         });
 
