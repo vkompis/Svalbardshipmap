@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Real-Time AIS Map</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <!-- Mapbox GL CSS & JS -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+    <!-- Firebase SDK (compat versions) -->
+    <script src="https://www.gstatic.com/firebasejs/9.21.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.21.0/firebase-database-compat.js"></script>
+    <style>
+      body { margin: 0; padding: 0; }
+      #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      // Initialize Mapbox
+      mapboxgl.accessToken =
+        "pk.eyJ1IjoidmVnYXJkMTk5MCIsImEiOiJjamtsYXdjZm4wMWljM3ZxcmUyOHJoNnBwIn0.sCjF-dZIu4TN21N0GhmFdg";
+      const map = new mapboxgl.Map({
+        container: "map",
+        style: "mapbox://styles/vegard1990/cm799kjir000q01r3gofu7tad",
+        center: [20.302734, 73.578167],
+        zoom: 3,
+      });
+      map.setRenderWorldCopies(true);
+
+      // Firebase configuration from your project
+      const firebaseConfig = {
+        apiKey: "AIzaSyBowluEJyNTZhnx-qlykdHO0JgLZy7d9K8",
+        authDomain: "svalbardships-517ab.firebaseapp.com",
+        databaseURL:
+          "https://svalbardships-517ab-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "svalbardships-517ab",
+        storageBucket: "svalbardships-517ab.firebasestorage.app",
+        messagingSenderId: "744978558688",
+        appId: "1:744978558688:web:987a97fd1981ee4423ea85",
+      };
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.database();
+
+      map.on("load", () => {
+        // Create an empty GeoJSON source for vessels
+        map.addSource("vessels", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+
+        // Layer to display vessel live positions as dots
+        map.addLayer({
+          id: "vessels-layer",
+          type: "circle",
+          source: "vessels",
+          paint: {
+            "circle-radius": 6,
+            "circle-color": "#007cbf",
+          },
+        });
+
+        // Layer to display vessel names on the map
+        map.addLayer({
+          id: "vessels-label",
+          type: "symbol",
+          source: "vessels",
+          layout: {
+            "text-field": ["get", "shipName"],
+            "text-offset": [0, 1.2],
+            "text-size": 12,
+          },
+          paint: {
+            "text-color": "#000000",
+          },
+        });
+
+        // Popup when clicking a vessel dot
+        map.on("click", "vessels-layer", (e) => {
+          const feature = map.queryRenderedFeatures(e.point, {
+            layers: ["vessels-layer"],
+          })[0];
+          if (!feature) return;
+          const popupContent = `
+            <strong>${feature.properties.shipName || "Unnamed Ship"}</strong><br>
+            MMSI: ${feature.properties.mmsi}<br>
+            Time: ${feature.properties.msgtime}<br>
+            Course: ${feature.properties.courseOverGround || "N/A"}<br>
+            Speed: ${feature.properties.speedOverGround || "N/A"}<br>
+            Navigational Status: ${feature.properties.navigationalStatus}<br>
+            Destination: ${feature.properties.destination || "N/A"}<br>
+            ETA: ${feature.properties.eta || "N/A"}<br>
+            Ship Type: ${feature.properties.shipType || "N/A"}<br>
+            True Heading: ${feature.properties.trueHeading || "N/A"}
+          `;
+          new mapboxgl.Popup()
+            .setLngLat(feature.geometry.coordinates)
+            .setHTML(popupContent)
+            .addTo(map);
+        });
+
+        // Listen for realtime updates from Firebase at the "vessels" node
+        db.ref("vessels").on("value", (snapshot) => {
+          const data = snapshot.val();
+          const features = [];
+          for (const mmsi in data) {
+            const vessel = data[mmsi];
+            features.push({
+              type: "Feature",
+              geometry: {
+                type: "Point",
+                coordinates: [vessel.longitude, vessel.latitude],
+              },
+              properties: {
+                shipName: vessel.shipName,
+                mmsi: vessel.mmsi,
+                msgtime: vessel.msgtime,
+                courseOverGround: vessel.courseOverGround,
+                navigationalStatus: vessel.navigationalStatus,
+                destination: vessel.destination,
+                eta: vessel.eta,
+                shipType: vessel.shipType,
+                speedOverGround: vessel.speedOverGround,
+                trueHeading: vessel.trueHeading,
+              },
+            });
+          }
+          const geojson = { type: "FeatureCollection", features: features };
+          map.getSource("vessels").setData(geojson);
+        });
+      });
+    </script>
+  </body>
+</html>
