@@ -24,13 +24,13 @@
       const map = new mapboxgl.Map({
         container: "map",
         style: "mapbox://styles/vegard1990/cm7b56vqd004x01s8cadtdd87",
-        projection: 'mercator',
         center: [20.302734, 73.578167],
         zoom: 3,
+        projection: "mercator"
       });
       map.setRenderWorldCopies(true);
 
-      // Firebase configuration from your project
+      // Firebase configuration (replace with your actual details)
       const firebaseConfig = {
         apiKey: "AIzaSyBowluEJyNTZhnx-qlykdHO0JgLZy7d9K8",
         authDomain: "svalbardships-517ab.firebaseapp.com",
@@ -39,16 +39,22 @@
         projectId: "svalbardships-517ab",
         storageBucket: "svalbardships-517ab.firebasestorage.app",
         messagingSenderId: "744978558688",
-        appId: "1:744978558688:web:987a97fd1981ee4423ea85",
+        appId: "1:744978558688:web:987a97fd1981ee4423ea85"
       };
       firebase.initializeApp(firebaseConfig);
       const db = firebase.database();
+
+      // Create a popup instance for hover events (no close button)
+      const hoverPopup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+      });
 
       map.on("load", () => {
         // Create an empty GeoJSON source for vessels
         map.addSource("vessels", {
           type: "geojson",
-          data: { type: "FeatureCollection", features: [] },
+          data: { type: "FeatureCollection", features: [] }
         });
 
         // Layer to display vessel live positions as dots
@@ -71,23 +77,51 @@
           layout: {
             "text-field": ["get", "shipName"],
             "text-offset": [0, 1.2],
-            "text-size": 10,
+            "text-size": 10
           },
           paint: {
-            "text-color": "#ffffff",
-          },
+            "text-color": "#ffffff"
+          }
         });
 
-        // Popup when clicking a vessel dot
-        map.on("click", "vessels-layer", (e) => {
+        // Hover event: Show popup when mouse enters a vessel dot
+        map.on("mouseenter", "vessels-layer", (e) => {
+          map.getCanvas().style.cursor = "pointer";
           const feature = map.queryRenderedFeatures(e.point, {
-            layers: ["vessels-layer"],
+            layers: ["vessels-layer"]
           })[0];
           if (!feature) return;
+          // Convert UTC timestamp to local time
+          const localTime = new Date(feature.properties.msgtime).toLocaleString();
           const popupContent = `
             <strong>${feature.properties.shipName || "Unnamed Ship"}</strong><br>
+            Country: ${feature.properties.country || "Unknown"}<br>
             MMSI: ${feature.properties.mmsi}<br>
-            Time: ${feature.properties.msgtime}<br>
+            Time: ${localTime}<br>
+            Course: ${feature.properties.courseOverGround || "N/A"}<br>
+            Speed: ${feature.properties.speedOverGround || "N/A"}
+          `;
+          hoverPopup.setLngLat(feature.geometry.coordinates)
+            .setHTML(popupContent)
+            .addTo(map);
+        });
+        map.on("mouseleave", "vessels-layer", () => {
+          map.getCanvas().style.cursor = "";
+          hoverPopup.remove();
+        });
+
+        // Click event: Show detailed popup on click
+        map.on("click", "vessels-layer", (e) => {
+          const feature = map.queryRenderedFeatures(e.point, {
+            layers: ["vessels-layer"]
+          })[0];
+          if (!feature) return;
+          const localTime = new Date(feature.properties.msgtime).toLocaleString();
+          const detailedPopupContent = `
+            <strong>${feature.properties.shipName || "Unnamed Ship"}</strong><br>
+            Country: ${feature.properties.country || "Unknown"}<br>
+            MMSI: ${feature.properties.mmsi}<br>
+            Time: ${localTime}<br>
             Course: ${feature.properties.courseOverGround || "N/A"}<br>
             Speed: ${feature.properties.speedOverGround || "N/A"}<br>
             Navigational Status: ${feature.properties.navigationalStatus}<br>
@@ -98,7 +132,7 @@
           `;
           new mapboxgl.Popup()
             .setLngLat(feature.geometry.coordinates)
-            .setHTML(popupContent)
+            .setHTML(detailedPopupContent)
             .addTo(map);
         });
 
@@ -112,7 +146,7 @@
               type: "Feature",
               geometry: {
                 type: "Point",
-                coordinates: [vessel.longitude, vessel.latitude],
+                coordinates: [vessel.longitude, vessel.latitude]
               },
               properties: {
                 shipName: vessel.shipName,
@@ -125,7 +159,8 @@
                 shipType: vessel.shipType,
                 speedOverGround: vessel.speedOverGround,
                 trueHeading: vessel.trueHeading,
-              },
+                country: vessel.country // Added country property
+              }
             });
           }
           const geojson = { type: "FeatureCollection", features: features };
