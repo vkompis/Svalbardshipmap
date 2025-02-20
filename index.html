@@ -120,8 +120,8 @@ map.addLayer({
 map.on("click", "vessels-layer", (e) => {
     // Query a 20x20 pixel box around the click point
     const features = map.queryRenderedFeatures([
-        [e.point.x - 5, e.point.y - 5],
-        [e.point.x + 5, e.point.y + 5]
+        [e.point.x - 10, e.point.y - 10],
+        [e.point.x + 10, e.point.y + 10]
     ], {
         layers: ["vessels-layer"]
     });
