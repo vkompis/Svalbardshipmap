@@ -13,6 +13,37 @@
     <style>
       body { margin: 0; padding: 0; }
       #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+      
+      /* Popup Styling */
+      .mapboxgl-popup-close-button {
+        display: none;
+      }
+      .mapboxgl-popup-content {
+        font: 400 13px/20px 'Source Sans Pro', 'Helvetica Neue', sans-serif;
+        padding: 0;
+        width: 180px;
+      }
+      .mapboxgl-popup-content h3 {
+        margin: 0;
+        padding: 10px;
+        border-radius: 3px 3px 0 0;
+        font-weight: 700;
+        margin-top: -15px;
+      }
+      .popup-header-country {
+        display: block;
+        font-size: 11px;
+        opacity: 0.9;
+      }
+      .mapboxgl-popup-content div {
+        padding: 10px;
+      }
+      .mapboxgl-popup-anchor-top > .mapboxgl-popup-content {
+        margin-top: 15px;
+      }
+      .mapboxgl-popup-anchor-top > .mapboxgl-popup-tip {
+        border-bottom-color: inherit;
+      }
     </style>
   </head>
   <body>
@@ -27,7 +58,7 @@
         center: [20.302734, 73.578167],
         zoom: 2,
         projection: "mercator",
-        dragRotate: false // disables rotation via mouse drag
+        dragRotate: false
       });
       map.setRenderWorldCopies(true);
       map.touchZoomRotate.disableRotation();
@@ -36,8 +67,7 @@
       const firebaseConfig = {
         apiKey: "AIzaSyBowluEJyNTZhnx-qlykdHO0JgLZy7d9K8",
         authDomain: "svalbardships-517ab.firebaseapp.com",
-        databaseURL:
-          "https://svalbardships-517ab-default-rtdb.europe-west1.firebasedatabase.app",
+        databaseURL: "https://svalbardships-517ab-default-rtdb.europe-west1.firebasedatabase.app",
         projectId: "svalbardships-517ab",
         storageBucket: "svalbardships-517ab.firebasestorage.app",
         messagingSenderId: "744978558688",
@@ -46,11 +76,28 @@
       firebase.initializeApp(firebaseConfig);
       const db = firebase.database();
 
-      // Create a popup instance for hover events (no close button)
-      const hoverPopup = new mapboxgl.Popup({
-        closeButton: false,
-        closeOnClick: false
-      });
+      // Helper: Convert navigational status code to description.
+      function getNavStatusDescription(status) {
+        switch (Number(status)) {
+          case 0: return "Under way using engine";
+          case 1: return "At anchor";
+          case 2: return "Not under command";
+          case 3: return "Restricted manoeuverability";
+          case 4: return "Constrained by her draught";
+          case 5: return "Moored";
+          case 6: return "Aground";
+          case 7: return "Engaged in Fishing";
+          case 8: return "Under way sailing";
+          case 9: return "Reserved for future amendment of Navigational Status for HSC";
+          case 10: return "Reserved for future amendment of Navigational Status for WIG";
+          case 11: return "Reserved for future use";
+          case 12: return "Reserved for future use";
+          case 13: return "Reserved for future use";
+          case 14: return "AIS-SART is active";
+          case 15: return "Not defined (default)";
+          default: return "Unknown";
+        }
+      }
 
       // Define country-dependent icon expressions.
       const euCountries = ["Austria","Belgium","Bulgaria","Croatia","Cyprus",
@@ -77,28 +124,25 @@
           "Unknowntriangle"
       ];
 
-      // Helper function to convert navigational status to description.
-      function getNavStatusDescription(status) {
-        switch (Number(status)) {
-          case 0: return "Under way using engine";
-          case 1: return "At anchor";
-          case 2: return "Not under command";
-          case 3: return "Restricted manoeuverability";
-          case 4: return "Constrained by her draught";
-          case 5: return "Moored";
-          case 6: return "Aground";
-          case 7: return "Engaged in Fishing";
-          case 8: return "Under way sailing";
-          case 9: return "Reserved for future amendment of Navigational Status for HSC";
-          case 10: return "Reserved for future amendment of Navigational Status for WIG";
-          case 11: return "Reserved for future use";
-          case 12: return "Reserved for future use";
-          case 13: return "Reserved for future use";
-          case 14: return "AIS-SART is active";
-          case 15: return "Not defined (default)";
-          default: return "Unknown";
-        }
+      // Functions to set header colors based on country.
+      function getHeaderColor(country) {
+        if (country === "Norway") return "#ff4040";
+        if (country === "Russian Federation") return "#7dacff";
+        if (euCountries.indexOf(country) !== -1) return "#2b2bcc";
+        if (country === "China (People's Republic of)") return "#f2c403";
+        return "#f7f7f7"; // Unknown
       }
+      function getHeaderTextColor(country) {
+        // If header background will be light (#f7f7f7), use dark gray.
+        if (getHeaderColor(country).toLowerCase() === "#f7f7f7") return "#333";
+        return "#fff";
+      }
+
+      // Create a popup instance for hover events.
+      const hoverPopup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+      });
 
       map.on("load", () => {
         // Create an empty GeoJSON source for vessels.
@@ -194,60 +238,76 @@
           }
         });
 
-        // Hover event: Show a simple popup.
-        map.on("mouseenter", "vessels-circle", (e) => {
-          map.getCanvas().style.cursor = "pointer";
-          const feature = map.queryRenderedFeatures(e.point, { layers: ["vessels-circle"] })[0];
-          if (!feature) return;
-          const localTime = new Date(feature.properties.msgtime).toLocaleString();
-          const course = (feature.properties.courseOverGround !== null && feature.properties.courseOverGround !== undefined)
-                          ? feature.properties.courseOverGround : "N/A";
-          const speed = (feature.properties.speedOverGround !== null && feature.properties.speedOverGround !== undefined)
-                          ? feature.properties.speedOverGround : "N/A";
-          const popupContent = `
-            <div style="font-family: sans-serif; font-size: 12px;">
-              <strong>Ship Name:</strong> ${feature.properties.shipName || "Unnamed Ship"}<br>
-              <strong>Country:</strong> ${feature.properties.country || "Unknown"}<br>
-              <strong>MMSI:</strong> ${feature.properties.mmsi}<br>
-              <strong>Time:</strong> ${localTime}<br>
-              <strong>Course:</strong> ${course}<br>
-              <strong>Speed:</strong> ${speed}
-            </div>
-          `;
-          hoverPopup.setLngLat(feature.geometry.coordinates)
-            .setHTML(popupContent)
-            .addTo(map);
-        });
-        map.on("mouseleave", "vessels-circle", () => {
-          map.getCanvas().style.cursor = "";
-          hoverPopup.remove();
-        });
+        // Hover event: Only enable on wider screens.
+        if (window.innerWidth > 600) {
+          map.on("mouseenter", "vessels-circle", (e) => {
+            map.getCanvas().style.cursor = "pointer";
+            const feature = map.queryRenderedFeatures(e.point, { layers: ["vessels-circle"] })[0];
+            if (!feature) return;
+            const localTime = new Date(feature.properties.msgtime).toLocaleString();
+            const course = (feature.properties.courseOverGround != null)
+                            ? feature.properties.courseOverGround : "N/A";
+            const speed = (feature.properties.speedOverGround != null)
+                            ? feature.properties.speedOverGround : "N/A";
+            const country = feature.properties.country || "Unknown";
+            const headerBg = getHeaderColor(country);
+            const headerTextColor = getHeaderTextColor(country);
+            const popupContent = `
+              <div class="mapboxgl-popup-content">
+                <h3 style="background: ${headerBg}; color: ${headerTextColor};">
+                  ${feature.properties.shipName || "Unnamed Ship"}
+                  <span class="popup-header-country">${country}</span>
+                </h3>
+                <div>
+                  <strong>MMSI:</strong> ${feature.properties.mmsi}<br>
+                  <strong>Time:</strong> ${localTime}<br>
+                  <strong>Course:</strong> ${course}<br>
+                  <strong>Speed:</strong> ${speed}
+                </div>
+              </div>
+            `;
+            hoverPopup.setLngLat(feature.geometry.coordinates)
+              .setHTML(popupContent)
+              .addTo(map);
+          });
+          map.on("mouseleave", "vessels-circle", () => {
+            map.getCanvas().style.cursor = "";
+            hoverPopup.remove();
+          });
+        }
 
-        // Click event: Show a detailed popup with bold category labels.
+        // Click event: Show detailed styled popup.
         map.on("click", "vessels-hit", (e) => {
           const feature = e.features[0];
           if (!feature) return;
           const localTime = new Date(feature.properties.msgtime).toLocaleString();
-          const course = (feature.properties.courseOverGround !== null && feature.properties.courseOverGround !== undefined)
+          const course = (feature.properties.courseOverGround != null)
                           ? feature.properties.courseOverGround : "N/A";
-          const speed = (feature.properties.speedOverGround !== null && feature.properties.speedOverGround !== undefined)
+          const speed = (feature.properties.speedOverGround != null)
                           ? feature.properties.speedOverGround : "N/A";
-          const trueHeading = (feature.properties.trueHeading !== null && feature.properties.trueHeading !== undefined)
+          const trueHeading = (feature.properties.trueHeading != null)
                           ? feature.properties.trueHeading : "N/A";
           const navStatus = getNavStatusDescription(feature.properties.navigationalStatus);
+          const country = feature.properties.country || "Unknown";
+          const headerBg = getHeaderColor(country);
+          const headerTextColor = getHeaderTextColor(country);
           const detailedPopupContent = `
-            <div style="font-family: sans-serif; font-size: 12px;">
-              <strong>Ship Name:</strong> ${feature.properties.shipName || "Unnamed Ship"}<br>
-              <strong>Country:</strong> ${feature.properties.country || "Unknown"}<br>
-              <strong>MMSI:</strong> ${feature.properties.mmsi}<br>
-              <strong>Time:</strong> ${localTime}<br>
-              <strong>Course:</strong> ${course}<br>
-              <strong>Speed:</strong> ${speed}<br>
-              <strong>Navigational Status:</strong> ${navStatus}<br>
-              <strong>Destination:</strong> ${feature.properties.destination || "N/A"}<br>
-              <strong>ETA:</strong> ${feature.properties.eta || "N/A"}<br>
-              <strong>Ship Type:</strong> ${feature.properties.shipTypeDesc || "N/A"}<br>
-              <strong>True Heading:</strong> ${trueHeading}
+            <div class="mapboxgl-popup-content">
+              <h3 style="background: ${headerBg}; color: ${headerTextColor};">
+                ${feature.properties.shipName || "Unnamed Ship"}
+                <span class="popup-header-country">${country}</span>
+              </h3>
+              <div>
+                <strong>MMSI:</strong> ${feature.properties.mmsi}<br>
+                <strong>Time:</strong> ${localTime}<br>
+                <strong>Course:</strong> ${course}<br>
+                <strong>Speed:</strong> ${speed}<br>
+                <strong>Navigational Status:</strong> ${navStatus}<br>
+                <strong>Destination:</strong> ${feature.properties.destination || "N/A"}<br>
+                <strong>ETA:</strong> ${feature.properties.eta || "N/A"}<br>
+                <strong>Ship Type:</strong> ${feature.properties.shipTypeDesc || "N/A"}<br>
+                <strong>True Heading:</strong> ${trueHeading}
+              </div>
             </div>
           `;
           new mapboxgl.Popup()
@@ -256,7 +316,7 @@
             .addTo(map);
         });
 
-        // Listen for realtime updates from Firebase at the "vessels" node.
+        // Listen for realtime updates from Firebase.
         db.ref("vessels").on("value", (snapshot) => {
           const data = snapshot.val();
           const features = [];
