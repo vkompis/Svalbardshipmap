@@ -55,13 +55,48 @@
       });
 
       map.on("load", () => {
-        // Create an empty GeoJSON source for vessels
+        // Load the triangle icon image from your public folder.
+        // The file is in "maki icons/icons/triangle.svg".
+        map.loadImage("maki icons/icons/triangle.svg", (error, image) => {
+          if (error) throw error;
+          if (!map.hasImage("triangle-icon")) {
+            map.addImage("triangle-icon", image, { sdf: true });
+          }
+          // Add the triangle layer.
+          map.addLayer({
+            id: "vessels-triangle",
+            type: "symbol",
+            source: "vessels",
+            layout: {
+              "icon-image": "triangle-icon",
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true,
+              "icon-rotate": ["get", "trueHeading"],
+              "icon-size": 0.5
+            },
+            paint: {
+              // Fade in triangles from zoom 5 to 6.
+              "icon-opacity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                5, 0,
+                6, 1
+              ],
+              "icon-color": "#fff600",
+              "icon-emissive-strength": 1
+            }
+          });
+        });
+
+        // Create an empty GeoJSON source for vessels.
         map.addSource("vessels", {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] }
         });
 
-        // Layer to display vessel live positions as small dots
+        // Layer to display vessel live positions as circles.
+        // Their opacity fades out from zoom 5 to 6.
         map.addLayer({
           id: "vessels-layer",
           type: "circle",
@@ -69,7 +104,14 @@
           paint: {
             "circle-radius": 2,
             "circle-color": "#fff600",
-            "circle-emissive-strength": 1
+            "circle-emissive-strength": 1,
+            "circle-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              5, 1,
+              6, 0
+            ]
           }
         });
 
@@ -79,13 +121,13 @@
           type: "circle",
           source: "vessels",
           paint: {
-            "circle-radius": 20,      // Larger than the visible circle
-            "circle-color": "#000000",  // Color does not matter since opacity is 0
-            "circle-opacity": 0         // Invisible
+            "circle-radius": 20,
+            "circle-color": "#000000",
+            "circle-opacity": 0
           }
         });
 
-        // Layer to display vessel names on the map (visible from zoom level 5 and above)
+        // Layer to display vessel names on the map (visible from zoom level 5 and above).
         map.addLayer({
           id: "vessels-label",
           type: "symbol",
@@ -103,14 +145,13 @@
           }
         });
 
-        // Hover event: Show popup when mouse enters a vessel dot (from the visible layer)
+        // Hover event: Show popup when mouse enters a vessel dot (from the circle layer).
         map.on("mouseenter", "vessels-layer", (e) => {
           map.getCanvas().style.cursor = "pointer";
           const feature = map.queryRenderedFeatures(e.point, {
             layers: ["vessels-layer"]
           })[0];
           if (!feature) return;
-          // Convert UTC timestamp to local time
           const localTime = new Date(feature.properties.msgtime).toLocaleString();
           const popupContent = `
             <strong>${feature.properties.shipName || "Unnamed Ship"}</strong><br>
@@ -129,7 +170,7 @@
           hoverPopup.remove();
         });
 
-        // Click event: Show detailed popup on click using the hit layer for a larger clickable area.
+        // Click event: Show detailed popup on click using the hit layer.
         map.on("click", "vessels-hit", (e) => {
           const feature = e.features[0];
           if (!feature) return;
@@ -153,7 +194,7 @@
             .addTo(map);
         });
 
-        // Listen for realtime updates from Firebase at the "vessels" node
+        // Listen for realtime updates from Firebase at the "vessels" node.
         db.ref("vessels").on("value", (snapshot) => {
           const data = snapshot.val();
           const features = [];
@@ -176,7 +217,7 @@
                 shipType: vessel.shipType,
                 speedOverGround: vessel.speedOverGround,
                 trueHeading: vessel.trueHeading,
-                country: vessel.country // Added country property
+                country: vessel.country
               }
             });
           }
