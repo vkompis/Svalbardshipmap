@@ -21,7 +21,7 @@
       // Initialize Mapbox
       mapboxgl.accessToken =
         "pk.eyJ1IjoidmVnYXJkMTk5MCIsImEiOiJjamtsYXdjZm4wMWljM3ZxcmUyOHJoNnBwIn0.sCjF-dZIu4TN21N0GhmFdg";
-        const map = new mapboxgl.Map({
+      const map = new mapboxgl.Map({
         container: "map",
         style: "mapbox://styles/vegard1990/cm7dg0jce00bi01r37j3h0iy6",
         center: [20.302734, 73.578167],
@@ -61,7 +61,7 @@
           data: { type: "FeatureCollection", features: [] }
         });
 
-        // Layer to display vessel live positions as dots
+        // Layer to display vessel live positions as small dots
         map.addLayer({
           id: "vessels-layer",
           type: "circle",
@@ -69,30 +69,41 @@
           paint: {
             "circle-radius": 2,
             "circle-color": "#fff600",
-            'circle-emissive-strength': 1
-          },
+            "circle-emissive-strength": 1
+          }
         });
 
-        // Layer to display vessel names on the map (visible from zoom level 6 and above)
-map.addLayer({
-  id: "vessels-label",
-  type: "symbol",
-  source: "vessels",
-  minzoom: 5,
-  layout: {
-    "text-field": ["get", "shipName"],
-    "text-transform": "uppercase",
-    "text-offset": [0, 1.2],
-    "text-size": 10,
-    "text-font": ["DIN Pro Bold", "Arial Unicode MS Regular"]
-  },
-  paint: {
-    "text-color": "#ffffff"
-  }
-});
+        // Invisible hit layer with a larger circle for easier touch/click events.
+        map.addLayer({
+          id: "vessels-hit",
+          type: "circle",
+          source: "vessels",
+          paint: {
+            "circle-radius": 20,      // Larger than the visible circle
+            "circle-color": "#000000",  // Color does not matter since opacity is 0
+            "circle-opacity": 0         // Invisible
+          }
+        });
 
+        // Layer to display vessel names on the map (visible from zoom level 5 and above)
+        map.addLayer({
+          id: "vessels-label",
+          type: "symbol",
+          source: "vessels",
+          minzoom: 5,
+          layout: {
+            "text-field": ["get", "shipName"],
+            "text-transform": "uppercase",
+            "text-offset": [0, 1.2],
+            "text-size": 10,
+            "text-font": ["DIN Pro Bold", "Arial Unicode MS Regular"]
+          },
+          paint: {
+            "text-color": "#ffffff"
+          }
+        });
 
-        // Hover event: Show popup when mouse enters a vessel dot
+        // Hover event: Show popup when mouse enters a vessel dot (from the visible layer)
         map.on("mouseenter", "vessels-layer", (e) => {
           map.getCanvas().style.cursor = "pointer";
           const feature = map.queryRenderedFeatures(e.point, {
@@ -118,37 +129,29 @@ map.addLayer({
           hoverPopup.remove();
         });
 
-        // Click event: Show detailed popup on click with larger hit area
-map.on("click", "vessels-layer", (e) => {
-    // Query a 20x20 pixel box around the click point
-    const features = map.queryRenderedFeatures([
-        [e.point.x - 10, e.point.y - 10],
-        [e.point.x + 10, e.point.y + 10]
-    ], {
-        layers: ["vessels-layer"]
-    });
-    if (!features.length) return;
-    const feature = features[0];
-    const localTime = new Date(feature.properties.msgtime).toLocaleString();
-    const detailedPopupContent = `
-        <strong>${feature.properties.shipName || "Unnamed Ship"}</strong><br>
-        Country: ${feature.properties.country || "Unknown"}<br>
-        MMSI: ${feature.properties.mmsi}<br>
-        Time: ${localTime}<br>
-        Course: ${feature.properties.courseOverGround || "N/A"}<br>
-        Speed: ${feature.properties.speedOverGround || "N/A"}<br>
-        Navigational Status: ${feature.properties.navigationalStatus}<br>
-        Destination: ${feature.properties.destination || "N/A"}<br>
-        ETA: ${feature.properties.eta || "N/A"}<br>
-        Ship Type: ${feature.properties.shipType || "N/A"}<br>
-        True Heading: ${feature.properties.trueHeading || "N/A"}
-    `;
-    new mapboxgl.Popup()
-        .setLngLat(feature.geometry.coordinates)
-        .setHTML(detailedPopupContent)
-        .addTo(map);
-});
-
+        // Click event: Show detailed popup on click using the hit layer for a larger clickable area.
+        map.on("click", "vessels-hit", (e) => {
+          const feature = e.features[0];
+          if (!feature) return;
+          const localTime = new Date(feature.properties.msgtime).toLocaleString();
+          const detailedPopupContent = `
+            <strong>${feature.properties.shipName || "Unnamed Ship"}</strong><br>
+            Country: ${feature.properties.country || "Unknown"}<br>
+            MMSI: ${feature.properties.mmsi}<br>
+            Time: ${localTime}<br>
+            Course: ${feature.properties.courseOverGround || "N/A"}<br>
+            Speed: ${feature.properties.speedOverGround || "N/A"}<br>
+            Navigational Status: ${feature.properties.navigationalStatus}<br>
+            Destination: ${feature.properties.destination || "N/A"}<br>
+            ETA: ${feature.properties.eta || "N/A"}<br>
+            Ship Type: ${feature.properties.shipType || "N/A"}<br>
+            True Heading: ${feature.properties.trueHeading || "N/A"}
+          `;
+          new mapboxgl.Popup()
+            .setLngLat(feature.geometry.coordinates)
+            .setHTML(detailedPopupContent)
+            .addTo(map);
+        });
 
         // Listen for realtime updates from Firebase at the "vessels" node
         db.ref("vessels").on("value", (snapshot) => {
@@ -184,4 +187,3 @@ map.on("click", "vessels-layer", (e) => {
     </script>
   </body>
 </html>
-
