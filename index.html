@@ -23,18 +23,16 @@
         "pk.eyJ1IjoidmVnYXJkMTk5MCIsImEiOiJjamtsYXdjZm4wMWljM3ZxcmUyOHJoNnBwIn0.sCjF-dZIu4TN21N0GhmFdg";
       const map = new mapboxgl.Map({
         container: "map",
-        style: "mapbox://styles/vegard1990/cm7dlx3qa00bu01r31rev0hkn",
+        style: "mapbox://styles/vegard1990/cm7dsvz6s00bk01r4aj1sgo63",
         center: [20.302734, 73.578167],
         zoom: 2,
         projection: "mercator",
         dragRotate: false // disables rotation via mouse drag
       });
       map.setRenderWorldCopies(true);
-      
-      // Disable rotation on touch devices
       map.touchZoomRotate.disableRotation();
 
-      // Firebase configuration (replace with your actual details)
+      // Firebase configuration
       const firebaseConfig = {
         apiKey: "AIzaSyBowluEJyNTZhnx-qlykdHO0JgLZy7d9K8",
         authDomain: "svalbardships-517ab.firebaseapp.com",
@@ -54,6 +52,54 @@
         closeOnClick: false
       });
 
+      // Define country-dependent icon expressions.
+      const euCountries = ["Austria","Belgium","Bulgaria","Croatia","Cyprus",
+                           "Czech Republic","Denmark","Estonia","Finland","France",
+                           "Germany","Greece","Hungary","Ireland","Italy","Latvia",
+                           "Lithuania","Luxembourg","Malta","Netherlands","Poland",
+                           "Portugal","Romania","Slovakia","Slovenia","Spain","Sweden"];
+
+      const circleIconExpression = [
+        "case",
+          ["==", ["get", "country"], "Norway"], "Norwaycircle",
+          ["==", ["get", "country"], "Russian Federation"], "Russiacircle",
+          ["==", ["get", "country"], "China (People's Republic of)"], "Chinacircle",
+          ["in", ["get", "country"], ["literal", euCountries]], "EUcircle",
+          "Unknowncircle"
+      ];
+
+      const triangleIconExpression = [
+        "case",
+          ["==", ["get", "country"], "Norway"], "Norwaytriangle",
+          ["==", ["get", "country"], "Russian Federation"], "Russiatriangle",
+          ["==", ["get", "country"], "China (People's Republic of)"], "Chinatriangle",
+          ["in", ["get", "country"], ["literal", euCountries]], "EUtriangle",
+          "Unknowntriangle"
+      ];
+
+      // Helper function to convert navigational status to description.
+      function getNavStatusDescription(status) {
+        switch (Number(status)) {
+          case 0: return "Under way using engine";
+          case 1: return "At anchor";
+          case 2: return "Not under command";
+          case 3: return "Restricted manoeuverability";
+          case 4: return "Constrained by her draught";
+          case 5: return "Moored";
+          case 6: return "Aground";
+          case 7: return "Engaged in Fishing";
+          case 8: return "Under way sailing";
+          case 9: return "Reserved for future amendment of Navigational Status for HSC";
+          case 10: return "Reserved for future amendment of Navigational Status for WIG";
+          case 11: return "Reserved for future use";
+          case 12: return "Reserved for future use";
+          case 13: return "Reserved for future use";
+          case 14: return "AIS-SART is active";
+          case 15: return "Not defined (default)";
+          default: return "Unknown";
+        }
+      }
+
       map.on("load", () => {
         // Create an empty GeoJSON source for vessels.
         map.addSource("vessels", {
@@ -61,16 +107,15 @@
           data: { type: "FeatureCollection", features: [] }
         });
 
-        // Symbol layer for circle markers using the "circlelightblue" icon.
+        // Layer for vessel markers using circle icons.
         map.addLayer({
           id: "vessels-circle",
           type: "symbol",
           source: "vessels",
           layout: {
-            "icon-image": "circlelightblue",
+            "icon-image": circleIconExpression,
             "icon-allow-overlap": true,
             "icon-ignore-placement": true,
-            // Increase icon size from 0.5 at zoom 5 to 0.8 at zoom 7.
             "icon-size": [
               "interpolate",
               ["linear"],
@@ -86,19 +131,17 @@
               ["zoom"],
               5, 1,
               5.5, 0
-            ],
-            "icon-color": "#fff600",
-            "icon-emissive-strength": 1
+            ]
           }
         });
 
-        // Symbol layer for triangle markers using the "trianglelightblue" icon.
+        // Layer for vessel markers using triangle icons.
         map.addLayer({
           id: "vessels-triangle",
           type: "symbol",
           source: "vessels",
           layout: {
-            "icon-image": "trianglelightblue",
+            "icon-image": triangleIconExpression,
             "icon-allow-overlap": true,
             "icon-ignore-placement": true,
             "icon-rotate": ["get", "trueHeading"],
@@ -117,13 +160,11 @@
               ["zoom"],
               5, 0,
               5.5, 1
-            ],
-            "icon-color": "#fff600",
-            "icon-emissive-strength": 1
+            ]
           }
         });
 
-        // Invisible hit layer with a larger circle for easier touch/click events.
+        // Invisible hit layer for easier click events.
         map.addLayer({
           id: "vessels-hit",
           type: "circle",
@@ -135,7 +176,7 @@
           }
         });
 
-        // Layer to display vessel names on the map (visible from zoom level 5 and above).
+        // Layer for vessel names (labels).
         map.addLayer({
           id: "vessels-label",
           type: "symbol",
@@ -153,7 +194,7 @@
           }
         });
 
-        // Hover event: Show popup when mouse enters a vessel marker (using the circle layer).
+        // Hover event: Show popup when mouse enters a vessel marker.
         map.on("mouseenter", "vessels-circle", (e) => {
           map.getCanvas().style.cursor = "pointer";
           const feature = map.queryRenderedFeatures(e.point, {
@@ -161,13 +202,19 @@
           })[0];
           if (!feature) return;
           const localTime = new Date(feature.properties.msgtime).toLocaleString();
+          const course = (feature.properties.courseOverGround !== null &&
+                          feature.properties.courseOverGround !== undefined)
+                          ? feature.properties.courseOverGround : "N/A";
+          const speed = (feature.properties.speedOverGround !== null &&
+                         feature.properties.speedOverGround !== undefined)
+                          ? feature.properties.speedOverGround : "N/A";
           const popupContent = `
             <strong>${feature.properties.shipName || "Unnamed Ship"}</strong><br>
             Country: ${feature.properties.country || "Unknown"}<br>
             MMSI: ${feature.properties.mmsi}<br>
             Time: ${localTime}<br>
-            Course: ${feature.properties.courseOverGround || "N/A"}<br>
-            Speed: ${feature.properties.speedOverGround || "N/A"}
+            Course: ${course}<br>
+            Speed: ${speed}
           `;
           hoverPopup.setLngLat(feature.geometry.coordinates)
             .setHTML(popupContent)
@@ -178,23 +225,33 @@
           hoverPopup.remove();
         });
 
-        // Click event: Show detailed popup on click using the hit layer.
+        // Click event: Show detailed popup.
         map.on("click", "vessels-hit", (e) => {
           const feature = e.features[0];
           if (!feature) return;
           const localTime = new Date(feature.properties.msgtime).toLocaleString();
+          const course = (feature.properties.courseOverGround !== null &&
+                          feature.properties.courseOverGround !== undefined)
+                          ? feature.properties.courseOverGround : "N/A";
+          const speed = (feature.properties.speedOverGround !== null &&
+                         feature.properties.speedOverGround !== undefined)
+                          ? feature.properties.speedOverGround : "N/A";
+          const trueHeading = (feature.properties.trueHeading !== null &&
+                               feature.properties.trueHeading !== undefined)
+                          ? feature.properties.trueHeading : "N/A";
+          const navStatus = getNavStatusDescription(feature.properties.navigationalStatus);
           const detailedPopupContent = `
             <strong>${feature.properties.shipName || "Unnamed Ship"}</strong><br>
             Country: ${feature.properties.country || "Unknown"}<br>
             MMSI: ${feature.properties.mmsi}<br>
             Time: ${localTime}<br>
-            Course: ${feature.properties.courseOverGround || "N/A"}<br>
-            Speed: ${feature.properties.speedOverGround || "N/A"}<br>
-            Navigational Status: ${feature.properties.navigationalStatus}<br>
+            Course: ${course}<br>
+            Speed: ${speed}<br>
+            Navigational Status: ${navStatus}<br>
             Destination: ${feature.properties.destination || "N/A"}<br>
             ETA: ${feature.properties.eta || "N/A"}<br>
-            Ship Type: ${feature.properties.shipType || "N/A"}<br>
-            True Heading: ${feature.properties.trueHeading || "N/A"}
+            Ship Type: ${feature.properties.shipTypeDesc || "N/A"}<br>
+            True Heading: ${trueHeading}
           `;
           new mapboxgl.Popup()
             .setLngLat(feature.geometry.coordinates)
@@ -223,6 +280,7 @@
                 destination: vessel.destination,
                 eta: vessel.eta,
                 shipType: vessel.shipType,
+                shipTypeDesc: vessel.shipTypeDesc,
                 speedOverGround: vessel.speedOverGround,
                 trueHeading: vessel.trueHeading,
                 country: vessel.country
