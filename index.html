@@ -194,27 +194,25 @@
           }
         });
 
-        // Hover event: Show popup when mouse enters a vessel marker.
+        // Hover event: Show a simple popup.
         map.on("mouseenter", "vessels-circle", (e) => {
           map.getCanvas().style.cursor = "pointer";
-          const feature = map.queryRenderedFeatures(e.point, {
-            layers: ["vessels-circle"]
-          })[0];
+          const feature = map.queryRenderedFeatures(e.point, { layers: ["vessels-circle"] })[0];
           if (!feature) return;
           const localTime = new Date(feature.properties.msgtime).toLocaleString();
-          const course = (feature.properties.courseOverGround !== null &&
-                          feature.properties.courseOverGround !== undefined)
+          const course = (feature.properties.courseOverGround !== null && feature.properties.courseOverGround !== undefined)
                           ? feature.properties.courseOverGround : "N/A";
-          const speed = (feature.properties.speedOverGround !== null &&
-                         feature.properties.speedOverGround !== undefined)
+          const speed = (feature.properties.speedOverGround !== null && feature.properties.speedOverGround !== undefined)
                           ? feature.properties.speedOverGround : "N/A";
           const popupContent = `
-            <strong>${feature.properties.shipName || "Unnamed Ship"}</strong><br>
-            Country: ${feature.properties.country || "Unknown"}<br>
-            MMSI: ${feature.properties.mmsi}<br>
-            Time: ${localTime}<br>
-            Course: ${course}<br>
-            Speed: ${speed}
+            <div style="font-family: sans-serif; font-size: 12px;">
+              <strong>Ship Name:</strong> ${feature.properties.shipName || "Unnamed Ship"}<br>
+              <strong>Country:</strong> ${feature.properties.country || "Unknown"}<br>
+              <strong>MMSI:</strong> ${feature.properties.mmsi}<br>
+              <strong>Time:</strong> ${localTime}<br>
+              <strong>Course:</strong> ${course}<br>
+              <strong>Speed:</strong> ${speed}
+            </div>
           `;
           hoverPopup.setLngLat(feature.geometry.coordinates)
             .setHTML(popupContent)
@@ -225,33 +223,32 @@
           hoverPopup.remove();
         });
 
-        // Click event: Show detailed popup.
+        // Click event: Show a detailed popup with bold category labels.
         map.on("click", "vessels-hit", (e) => {
           const feature = e.features[0];
           if (!feature) return;
           const localTime = new Date(feature.properties.msgtime).toLocaleString();
-          const course = (feature.properties.courseOverGround !== null &&
-                          feature.properties.courseOverGround !== undefined)
+          const course = (feature.properties.courseOverGround !== null && feature.properties.courseOverGround !== undefined)
                           ? feature.properties.courseOverGround : "N/A";
-          const speed = (feature.properties.speedOverGround !== null &&
-                         feature.properties.speedOverGround !== undefined)
+          const speed = (feature.properties.speedOverGround !== null && feature.properties.speedOverGround !== undefined)
                           ? feature.properties.speedOverGround : "N/A";
-          const trueHeading = (feature.properties.trueHeading !== null &&
-                               feature.properties.trueHeading !== undefined)
+          const trueHeading = (feature.properties.trueHeading !== null && feature.properties.trueHeading !== undefined)
                           ? feature.properties.trueHeading : "N/A";
           const navStatus = getNavStatusDescription(feature.properties.navigationalStatus);
           const detailedPopupContent = `
-            <strong>${feature.properties.shipName || "Unnamed Ship"}</strong><br>
-            Country: ${feature.properties.country || "Unknown"}<br>
-            MMSI: ${feature.properties.mmsi}<br>
-            Time: ${localTime}<br>
-            Course: ${course}<br>
-            Speed: ${speed}<br>
-            Navigational Status: ${navStatus}<br>
-            Destination: ${feature.properties.destination || "N/A"}<br>
-            ETA: ${feature.properties.eta || "N/A"}<br>
-            Ship Type: ${feature.properties.shipTypeDesc || "N/A"}<br>
-            True Heading: ${trueHeading}
+            <div style="font-family: sans-serif; font-size: 12px;">
+              <strong>Ship Name:</strong> ${feature.properties.shipName || "Unnamed Ship"}<br>
+              <strong>Country:</strong> ${feature.properties.country || "Unknown"}<br>
+              <strong>MMSI:</strong> ${feature.properties.mmsi}<br>
+              <strong>Time:</strong> ${localTime}<br>
+              <strong>Course:</strong> ${course}<br>
+              <strong>Speed:</strong> ${speed}<br>
+              <strong>Navigational Status:</strong> ${navStatus}<br>
+              <strong>Destination:</strong> ${feature.properties.destination || "N/A"}<br>
+              <strong>ETA:</strong> ${feature.properties.eta || "N/A"}<br>
+              <strong>Ship Type:</strong> ${feature.properties.shipTypeDesc || "N/A"}<br>
+              <strong>True Heading:</strong> ${trueHeading}
+            </div>
           `;
           new mapboxgl.Popup()
             .setLngLat(feature.geometry.coordinates)
