@@ -22,15 +22,17 @@
       mapboxgl.accessToken =
         "pk.eyJ1IjoidmVnYXJkMTk5MCIsImEiOiJjamtsYXdjZm4wMWljM3ZxcmUyOHJoNnBwIn0.sCjF-dZIu4TN21N0GhmFdg";
         const map = new mapboxgl.Map({
-  container: "map",
-  style: "mapbox://styles/vegard1990/cm7dg0jce00bi01r37j3h0iy6",
-  center: [20.302734, 73.578167],
-  zoom: 2,
-  projection: "mercator",
-  dragRotate: false, // disables rotation via mouse drag
-  touchZoomRotate: { rotate: false } // disables rotation on touch, but still allows zoom
-});
-map.setRenderWorldCopies(true);
+        container: "map",
+        style: "mapbox://styles/vegard1990/cm7dg0jce00bi01r37j3h0iy6",
+        center: [20.302734, 73.578167],
+        zoom: 2,
+        projection: "mercator",
+        dragRotate: false // disables rotation via mouse drag
+      });
+      map.setRenderWorldCopies(true);
+      
+      // Disable rotation on touch devices
+      map.touchZoomRotate.disableRotation();
 
       // Firebase configuration (replace with your actual details)
       const firebaseConfig = {
@@ -76,7 +78,7 @@ map.addLayer({
   id: "vessels-label",
   type: "symbol",
   source: "vessels",
-  minzoom: 6,
+  minzoom: 5,
   layout: {
     "text-field": ["get", "shipName"],
     "text-transform": "uppercase",
@@ -182,3 +184,4 @@ map.on("click", "vessels-layer", (e) => {
     </script>
   </body>
 </html>
+
