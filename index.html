@@ -23,7 +23,7 @@
         "pk.eyJ1IjoidmVnYXJkMTk5MCIsImEiOiJjamtsYXdjZm4wMWljM3ZxcmUyOHJoNnBwIn0.sCjF-dZIu4TN21N0GhmFdg";
       const map = new mapboxgl.Map({
         container: "map",
-        style: "mapbox://styles/vegard1990/cm7dg0jce00bi01r37j3h0iy6",
+        style: "mapbox://styles/vegard1990/cm7dlx3qa00bu01r31rev0hkn",
         center: [20.302734, 73.578167],
         zoom: 2,
         projection: "mercator",
@@ -55,63 +55,71 @@
       });
 
       map.on("load", () => {
-        // Load the triangle icon image from your public folder.
-        // The file is in "maki icons/icons/triangle.svg".
-        map.loadImage("maki icons/icons/triangle.svg", (error, image) => {
-          if (error) throw error;
-          if (!map.hasImage("triangle-icon")) {
-            map.addImage("triangle-icon", image, { sdf: true });
-          }
-          // Add the triangle layer.
-          map.addLayer({
-            id: "vessels-triangle",
-            type: "symbol",
-            source: "vessels",
-            layout: {
-              "icon-image": "triangle-icon",
-              "icon-allow-overlap": true,
-              "icon-ignore-placement": true,
-              "icon-rotate": ["get", "trueHeading"],
-              "icon-size": 0.5
-            },
-            paint: {
-              // Fade in triangles from zoom 5 to 6.
-              "icon-opacity": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                5, 0,
-                6, 1
-              ],
-              "icon-color": "#fff600",
-              "icon-emissive-strength": 1
-            }
-          });
-        });
-
         // Create an empty GeoJSON source for vessels.
         map.addSource("vessels", {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] }
         });
 
-        // Layer to display vessel live positions as circles.
-        // Their opacity fades out from zoom 5 to 6.
+        // Symbol layer for circle markers using the "circlelightblue" icon.
         map.addLayer({
-          id: "vessels-layer",
-          type: "circle",
+          id: "vessels-circle",
+          type: "symbol",
           source: "vessels",
+          layout: {
+            "icon-image": "circlelightblue",
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+            // Increase icon size from 0.5 at zoom 5 to 0.8 at zoom 7.
+            "icon-size": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              5, 0.3,
+              7, 0.8
+            ]
+          },
           paint: {
-            "circle-radius": 2,
-            "circle-color": "#fff600",
-            "circle-emissive-strength": 1,
-            "circle-opacity": [
+            "icon-opacity": [
               "interpolate",
               ["linear"],
               ["zoom"],
               5, 1,
-              6, 0
+              5.5, 0
+            ],
+            "icon-color": "#fff600",
+            "icon-emissive-strength": 1
+          }
+        });
+
+        // Symbol layer for triangle markers using the "trianglelightblue" icon.
+        map.addLayer({
+          id: "vessels-triangle",
+          type: "symbol",
+          source: "vessels",
+          layout: {
+            "icon-image": "trianglelightblue",
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+            "icon-rotate": ["get", "trueHeading"],
+            "icon-size": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              5, 0.5,
+              7, 0.8
             ]
+          },
+          paint: {
+            "icon-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              5, 0,
+              5.5, 1
+            ],
+            "icon-color": "#fff600",
+            "icon-emissive-strength": 1
           }
         });
 
@@ -145,11 +153,11 @@
           }
         });
 
-        // Hover event: Show popup when mouse enters a vessel dot (from the circle layer).
-        map.on("mouseenter", "vessels-layer", (e) => {
+        // Hover event: Show popup when mouse enters a vessel marker (using the circle layer).
+        map.on("mouseenter", "vessels-circle", (e) => {
           map.getCanvas().style.cursor = "pointer";
           const feature = map.queryRenderedFeatures(e.point, {
-            layers: ["vessels-layer"]
+            layers: ["vessels-circle"]
           })[0];
           if (!feature) return;
           const localTime = new Date(feature.properties.msgtime).toLocaleString();
@@ -165,7 +173,7 @@
             .setHTML(popupContent)
             .addTo(map);
         });
-        map.on("mouseleave", "vessels-layer", () => {
+        map.on("mouseleave", "vessels-circle", () => {
           map.getCanvas().style.cursor = "";
           hoverPopup.remove();
         });
