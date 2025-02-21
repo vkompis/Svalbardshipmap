@@ -30,7 +30,6 @@
         font-weight: 700;
         margin-top: -15px;
       }
-      /* The header now shows ship name with the country in a smaller font */
       .popup-header-country {
         display: block;
         font-size: 11px;
@@ -59,7 +58,7 @@
         center: [20.302734, 73.578167],
         zoom: 2,
         projection: "mercator",
-        dragRotate: false // disables rotation via mouse drag
+        dragRotate: false
       });
       map.setRenderWorldCopies(true);
       map.touchZoomRotate.disableRotation();
@@ -77,11 +76,28 @@
       firebase.initializeApp(firebaseConfig);
       const db = firebase.database();
 
-      // Create a popup instance for hover events (no close button)
-      const hoverPopup = new mapboxgl.Popup({
-        closeButton: false,
-        closeOnClick: false
-      });
+      // Helper: Convert navigational status code to description.
+      function getNavStatusDescription(status) {
+        switch (Number(status)) {
+          case 0: return "Under way using engine";
+          case 1: return "At anchor";
+          case 2: return "Not under command";
+          case 3: return "Restricted manoeuverability";
+          case 4: return "Constrained by her draught";
+          case 5: return "Moored";
+          case 6: return "Aground";
+          case 7: return "Engaged in Fishing";
+          case 8: return "Under way sailing";
+          case 9: return "Reserved for future amendment of Navigational Status for HSC";
+          case 10: return "Reserved for future amendment of Navigational Status for WIG";
+          case 11: return "Reserved for future use";
+          case 12: return "Reserved for future use";
+          case 13: return "Reserved for future use";
+          case 14: return "AIS-SART is active";
+          case 15: return "Not defined (default)";
+          default: return "Unknown";
+        }
+      }
 
       // Define country-dependent icon expressions.
       const euCountries = ["Austria","Belgium","Bulgaria","Croatia","Cyprus",
@@ -108,119 +124,7 @@
           "Unknowntriangle"
       ];
 
-      // Helper function to convert navigational status to description.
-      function getNavStatusDescription(status) {
-        switch (Number(status)) {
-          case 0: return "Under way using engine";
-          case 1: return "At anchor";
-          case 2: return "Not under command";
-          case 3: return "Restricted manoeuverability";
-          case 4: return "Constrained by her draught";
-          case 5: return "Moored";
-          case 6: return "Aground";
-          case 7: return "Engaged in Fishing";
-          case 8: return "Under way sailing";
-          case 9: return "Reserved for future amendment of Navigational Status for HSC";
-          case 10: return "Reserved for future amendment of Navigational Status for WIG";
-          case 11: return "Reserved for future use";
-          case 12: return "Reserved for future use";
-          case 13: return "Reserved for future use";
-          case 14: return "AIS-SART is active";
-          case 15: return "Not defined (default)";
-          default: return "Unknown";
-        }
-      }
-
-      // ----------------------------
-      // Client-Side Map Interaction Code
-      // ----------------------------
-      
-      // Disable hover popups on mobile (width <=600)
-      if (window.innerWidth > 600) {
-        map.on("mouseenter", "vessels-circle", (e) => {
-          map.getCanvas().style.cursor = "pointer";
-          const feature = map.queryRenderedFeatures(e.point, {
-            layers: ["vessels-circle"]
-          })[0];
-          if (!feature) return;
-          const localTime = new Date(feature.properties.msgtime).toLocaleString();
-          const course = (feature.properties.courseOverGround !== null && feature.properties.courseOverGround !== undefined)
-                          ? feature.properties.courseOverGround : "N/A";
-          const speed = (feature.properties.speedOverGround !== null && feature.properties.speedOverGround !== undefined)
-                          ? feature.properties.speedOverGround : "N/A";
-          // Use the country from the feature or "Unknown"
-          const country = feature.properties.country || "Unknown";
-          // Here the hover popup uses simple styling (you could add your colored header if desired)
-          const popupContent = `
-            <div class="mapboxgl-popup-content">
-              <h3 style="background: ${getHeaderColor(country)}; color: ${getHeaderTextColor(country)};">
-                ${feature.properties.shipName || "Unnamed Ship"}
-                <span class="popup-header-country">${country}</span>
-              </h3>
-              <div>
-                <strong>MMSI:</strong> ${feature.properties.mmsi}<br>
-                <strong>Time:</strong> ${localTime}<br>
-                <strong>Course:</strong> ${course}<br>
-                <strong>Speed:</strong> ${speed}
-              </div>
-            </div>
-          `;
-          hoverPopup.setLngLat(feature.geometry.coordinates)
-            .setHTML(popupContent)
-            .addTo(map);
-        });
-        map.on("mouseleave", "vessels-circle", () => {
-          map.getCanvas().style.cursor = "";
-          hoverPopup.remove();
-        });
-      }
-
-      // -----------------------------
-      // FUNCTIONS USED ON THE CLIENT
-      // -----------------------------
-      
-      // Function to fetch and display vessel track (last 24 hours)
-      async function showVesselTrack(mmsi) {
-        // Remove any existing track layer.
-        if (map.getLayer('vessel-track-line')) {
-          map.removeLayer('vessel-track-line');
-          map.removeSource('vessel-track');
-        }
-        try {
-          const historicToken = await getHistoricAccessToken();
-          const response = await fetch(`https://historic.ais.barentswatch.no/v1/historic/trackslast24hours/${mmsi}`, {
-            headers: { "Authorization": `Bearer ${historicToken}` }
-          });
-          const data = await response.json();
-          data.sort((a, b) => new Date(a.msgtime) - new Date(b.msgtime));
-          const coords = data.map(point => [point.longitude, point.latitude]);
-          const geojsonTrack = {
-            type: "Feature",
-            geometry: {
-              type: "LineString",
-              coordinates: coords
-            }
-          };
-          map.addSource("vessel-track", { type: "geojson", data: geojsonTrack });
-          map.addLayer({
-            id: "vessel-track-line",
-            type: "line",
-            source: "vessel-track",
-            layout: { "line-join": "round", "line-cap": "round" },
-            paint: {
-              "line-color": "#ff4040",
-              "line-width": 3,
-              "line-opacity": 0.7
-            }
-          });
-        } catch (error) {
-          console.error("Error fetching vessel track:", error);
-        }
-      }
-
-      // -----------------------------
-      // Helper Functions for Styling
-      // -----------------------------
+      // Functions to set header colors based on country.
       function getHeaderColor(country) {
         if (country === "Norway") return "#ff4040";
         if (country === "Russian Federation") return "#7dacff";
@@ -229,43 +133,17 @@
         return "#f7f7f7"; // Unknown
       }
       function getHeaderTextColor(country) {
+        // If header background will be light (#f7f7f7), use dark gray.
         if (getHeaderColor(country).toLowerCase() === "#f7f7f7") return "#333";
         return "#fff";
       }
 
-      // -----------------------------
-      // Merged Ship Type Categories
-      // -----------------------------
-      function getShipTypeDescription(shipType) {
-        if (shipType === null || shipType === undefined) return "N/A";
-        if (shipType >= 1 && shipType <= 19) return "Reserved for future use";
-        if (shipType >= 20 && shipType <= 29) return "Wing in ground";
-        if (shipType === 30) return "Fishing";
-        if (shipType >= 31 && shipType <= 32) return "Towing";
-        if (shipType === 33) return "Dredging/Underwater Ops";
-        if (shipType === 34) return "Diving Ops";
-        if (shipType === 35) return "Military Ops";
-        if (shipType >= 36 && shipType <= 39) return "Sailing";
-        if (shipType >= 40 && shipType <= 49) return "High Speed Craft";
-        if (shipType >= 50 && shipType <= 59) {
-          if (shipType === 50) return "Pilot Vessel";
-          if (shipType === 51) return "Search & Rescue";
-          if (shipType === 52) return "Tug";
-          if (shipType === 53) return "Port Tender";
-          if (shipType === 54) return "Anti-pollution";
-          if (shipType === 55) return "Law Enforcement";
-          return "Local Vessel";
-        }
-        if (shipType >= 60 && shipType <= 69) return "Passenger";
-        if (shipType >= 70 && shipType <= 79) return "Cargo";
-        if (shipType >= 80 && shipType <= 89) return "Tanker";
-        if (shipType >= 90 && shipType <= 99) return "Other Type";
-        return "Unknown";
-      }
+      // Create a popup instance for hover events.
+      const hoverPopup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+      });
 
-      // -----------------------------
-      // Map Layers and Popup Events
-      // -----------------------------
       map.on("load", () => {
         // Create an empty GeoJSON source for vessels.
         map.addSource("vessels", {
@@ -367,9 +245,9 @@
             const feature = map.queryRenderedFeatures(e.point, { layers: ["vessels-circle"] })[0];
             if (!feature) return;
             const localTime = new Date(feature.properties.msgtime).toLocaleString();
-            const course = (feature.properties.courseOverGround !== null && feature.properties.courseOverGround !== undefined)
+            const course = (feature.properties.courseOverGround != null)
                             ? feature.properties.courseOverGround : "N/A";
-            const speed = (feature.properties.speedOverGround !== null && feature.properties.speedOverGround !== undefined)
+            const speed = (feature.properties.speedOverGround != null)
                             ? feature.properties.speedOverGround : "N/A";
             const country = feature.properties.country || "Unknown";
             const headerBg = getHeaderColor(country);
@@ -398,16 +276,16 @@
           });
         }
 
-        // Click event: Show detailed popup with "Show Track" link.
+        // Click event: Show detailed styled popup.
         map.on("click", "vessels-hit", (e) => {
           const feature = e.features[0];
           if (!feature) return;
           const localTime = new Date(feature.properties.msgtime).toLocaleString();
-          const course = (feature.properties.courseOverGround !== null && feature.properties.courseOverGround !== undefined)
+          const course = (feature.properties.courseOverGround != null)
                           ? feature.properties.courseOverGround : "N/A";
-          const speed = (feature.properties.speedOverGround !== null && feature.properties.speedOverGround !== undefined)
+          const speed = (feature.properties.speedOverGround != null)
                           ? feature.properties.speedOverGround : "N/A";
-          const trueHeading = (feature.properties.trueHeading !== null && feature.properties.trueHeading !== undefined)
+          const trueHeading = (feature.properties.trueHeading != null)
                           ? feature.properties.trueHeading : "N/A";
           const navStatus = getNavStatusDescription(feature.properties.navigationalStatus);
           const country = feature.properties.country || "Unknown";
@@ -429,9 +307,6 @@
                 <strong>ETA:</strong> ${feature.properties.eta || "N/A"}<br>
                 <strong>Ship Type:</strong> ${feature.properties.shipTypeDesc || "N/A"}<br>
                 <strong>True Heading:</strong> ${trueHeading}
-              </div>
-              <div class="show-track-link" onclick="showVesselTrack(${feature.properties.mmsi})">
-                Show Track
               </div>
             </div>
           `;
