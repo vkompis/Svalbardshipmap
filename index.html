@@ -23,7 +23,6 @@
         padding: 0;
         width: 180px;
       }
-      /* Increased ship name font-size and rounded all corners */
       .mapboxgl-popup-content h3 {
         margin: 0;
         padding: 10px;
@@ -32,7 +31,6 @@
         margin-top: -15px;
         font-size: 16px;
       }
-      /* Make the country text smaller */
       .popup-header-country {
         display: block;
         font-size: 9px;
@@ -61,6 +59,7 @@
         box-shadow: 0 1px 2px rgba(0,0,0,0.15);
         z-index: 1;
         color: #ffffff;
+        transition: opacity 0.3s ease-out;
       }
       .legend-item {
         display: flex;
@@ -79,6 +78,19 @@
       .legend-icon.eu { background: #2b2bcc; }
       .legend-icon.china { background: #f2c403; }
       .legend-icon.unknown { background: #f7f7f7; }
+      
+      /* On mobile, make the legend a bit smaller */
+      @media (max-width: 600px) {
+        #legend {
+          font-size: 10px;
+          padding: 8px;
+        }
+        .legend-icon {
+          width: 14px;
+          height: 14px;
+          margin-right: 4px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -399,6 +411,21 @@
           }
           const geojson = { type: "FeatureCollection", features: features };
           map.getSource("vessels").setData(geojson);
+        });
+        
+        // Adjust the legend opacity based on zoom.
+        map.on("zoom", () => {
+          const legend = document.getElementById("legend");
+          const zoom = map.getZoom();
+          // Fully visible at zoom <= 4.5, fully hidden at zoom >= 5.5.
+          if (zoom <= 4.5) {
+            legend.style.opacity = 1;
+          } else if (zoom >= 5.5) {
+            legend.style.opacity = 0;
+          } else {
+            // Linearly interpolate between 4.5 and 5.5.
+            legend.style.opacity = 1 - (zoom - 4.5);
+          }
         });
       });
     </script>
