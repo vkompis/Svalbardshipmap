@@ -27,10 +27,10 @@
       .mapboxgl-popup-content h3 {
         margin: 0;
         padding: 10px;
-        border-radius: 3px; /* Rounds all four corners */
+        border-radius: 3px;
         font-weight: 700;
         margin-top: -15px;
-        font-size: 16px; /* Ship name is now a bit larger */
+        font-size: 16px;
       }
       /* Make the country text smaller */
       .popup-header-country {
@@ -47,10 +47,61 @@
       .mapboxgl-popup-anchor-top > .mapboxgl-popup-tip {
         border-bottom-color: inherit;
       }
+      
+      /* Legend Styling */
+      #legend {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #262828;
+        padding: 10px;
+        border-radius: 4px;
+        font-family: "DIN Pro Regular", sans-serif;
+        font-size: 12px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+        z-index: 1;
+        color: #ffffff;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+      .legend-icon {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        margin-right: 6px;
+        border: 1px solid #000;
+      }
+      .legend-icon.norway { background: #ff4040; }
+      .legend-icon.russia { background: #7dacff; }
+      .legend-icon.eu { background: #2b2bcc; }
+      .legend-icon.china { background: #f2c403; }
+      .legend-icon.unknown { background: #f7f7f7; }
     </style>
   </head>
   <body>
     <div id="map"></div>
+    <!-- Legend -->
+    <div id="legend">
+      <div class="legend-item">
+        <span class="legend-icon norway"></span> Norway
+      </div>
+      <div class="legend-item">
+        <span class="legend-icon russia"></span> Russia
+      </div>
+      <div class="legend-item">
+        <span class="legend-icon eu"></span> EU
+      </div>
+      <div class="legend-item">
+        <span class="legend-icon china"></span> China
+      </div>
+      <div class="legend-item">
+        <span class="legend-icon unknown"></span> Rest of world
+      </div>
+    </div>
+    
     <script>
       // Initialize Mapbox
       mapboxgl.accessToken =
@@ -136,7 +187,6 @@
         return "#f7f7f7"; // Unknown
       }
       function getHeaderTextColor(country) {
-        // If header background will be light (#f7f7f7), use dark gray.
         if (getHeaderColor(country).toLowerCase() === "#f7f7f7") return "#333";
         return "#fff";
       }
@@ -354,4 +404,3 @@
     </script>
   </body>
 </html>
-
