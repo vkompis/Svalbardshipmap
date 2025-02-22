@@ -51,7 +51,6 @@
         position: absolute;
         top: 10px;
         right: 10px;
-        /* Background removed */
         padding: 10px;
         border-radius: 4px;
         font-family: "Source Sans Pro", sans-serif;
@@ -112,10 +111,13 @@
       </div>
     </div>
     
+    <!-- Load external configuration for sensitive keys.
+         Ensure that config.js is not tracked by git (added to .gitignore) -->
+    <script src="config.js"></script>
+    
     <script>
-      // Initialize Mapbox
-      mapboxgl.accessToken =
-        "pk.eyJ1IjoidmVnYXJkMTk5MCIsImEiOiJjamtsYXdjZm4wMWljM3ZxcmUyOHJoNnBwIn0.sCjF-dZIu4TN21N0GhmFdg";
+      // Initialize Mapbox using the token loaded from our config file.
+      mapboxgl.accessToken = window.env.MAPBOX_ACCESS_TOKEN;
       const map = new mapboxgl.Map({
         container: "map",
         style: "mapbox://styles/vegard1990/cm7dsvz6s00bk01r4aj1sgo63",
@@ -127,15 +129,15 @@
       map.setRenderWorldCopies(true);
       map.touchZoomRotate.disableRotation();
 
-      // Firebase configuration
+      // Firebase configuration loaded from our config file.
       const firebaseConfig = {
-        apiKey: "AIzaSyBowluEJyNTZhnx-qlykdHO0JgLZy7d9K8",
-        authDomain: "svalbardships-517ab.firebaseapp.com",
-        databaseURL: "https://svalbardships-517ab-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "svalbardships-517ab",
-        storageBucket: "svalbardships-517ab.firebasestorage.app",
-        messagingSenderId: "744978558688",
-        appId: "1:744978558688:web:987a97fd1981ee4423ea85"
+        apiKey: window.env.FIREBASE_API_KEY,
+        authDomain: window.env.FIREBASE_AUTH_DOMAIN,
+        databaseURL: window.env.FIREBASE_DATABASE_URL,
+        projectId: window.env.FIREBASE_PROJECT_ID,
+        storageBucket: window.env.FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: window.env.FIREBASE_MESSAGING_SENDER_ID,
+        appId: window.env.FIREBASE_APP_ID
       };
       firebase.initializeApp(firebaseConfig);
       const db = firebase.database();
@@ -415,13 +417,11 @@
         map.on("zoom", () => {
           const legend = document.getElementById("legend");
           const zoom = map.getZoom();
-          // Fully visible at zoom <= 4.5, fully hidden at zoom >= 5.5.
           if (zoom <= 4.5) {
             legend.style.opacity = 1;
           } else if (zoom >= 5.5) {
             legend.style.opacity = 0;
           } else {
-            // Linearly interpolate between 4.5 and 5.5.
             legend.style.opacity = 1 - (zoom - 4.5);
           }
         });
