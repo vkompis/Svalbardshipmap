@@ -31,9 +31,10 @@
         margin-top: -15px;
         font-size: 16px;
       }
+      /* Increased font size for country text */
       .popup-header-country {
         display: block;
-        font-size: 9px;
+        font-size: 11px;
         opacity: 0.9;
       }
       .mapboxgl-popup-content div {
@@ -51,12 +52,10 @@
         position: absolute;
         top: 10px;
         right: 10px;
-        /* Background removed */
         padding: 10px;
         border-radius: 4px;
         font-family: "Source Sans Pro", sans-serif;
         font-size: 12px;
-
         color: #ffffff;
         transition: opacity 0.3s ease-out;
       }
@@ -164,12 +163,290 @@
         }
       }
 
-      // Define country-dependent icon expressions.
-      const euCountries = ["Austria","Belgium","Bulgaria","Croatia","Cyprus",
-                           "Czech Republic","Denmark","Estonia","Finland","France",
-                           "Germany","Greece","Hungary","Ireland","Italy","Latvia",
-                           "Lithuania","Luxembourg","Malta","Netherlands","Poland",
-                           "Portugal","Romania","Slovakia","Slovenia","Spain","Sweden"];
+      /*
+       * Helper: Clean the country name.
+       * Remove parenthetical text and trim whitespace.
+       * e.g. "Panama (Republic of)" -> "panama"
+       */
+      function cleanCountryName(country) {
+        if (!country) return "";
+        const cleaned = country.replace(/\(.*?\)/, "").trim();
+        return cleaned.toLowerCase();
+      }
+
+      /*
+       * Expanded ISO mapping: Maps cleaned country names to their ISO 3166-1 alpha-2 codes.
+       */
+      const isoMap = {
+        "afghanistan": "af",
+        "aland islands": "ax",
+        "albania": "al",
+        "algeria": "dz",
+        "american samoa": "as",
+        "andorra": "ad",
+        "angola": "ao",
+        "anguilla": "ai",
+        "antarctica": "aq",
+        "antigua and barbuda": "ag",
+        "argentina": "ar",
+        "armenia": "am",
+        "aruba": "aw",
+        "australia": "au",
+        "austria": "at",
+        "azerbaijan": "az",
+        "bahamas": "bs",
+        "bahrain": "bh",
+        "bangladesh": "bd",
+        "barbados": "bb",
+        "belarus": "by",
+        "belgium": "be",
+        "belize": "bz",
+        "benin": "bj",
+        "bermuda": "bm",
+        "bhutan": "bt",
+        "bolivia": "bo",
+        "bonaire sint eustatius and saba": "bq",
+        "bosnia and herzegovina": "ba",
+        "botswana": "bw",
+        "bouvet island": "bv",
+        "brazil": "br",
+        "british indian ocean territory": "io",
+        "brunei darussalam": "bn",
+        "bulgaria": "bg",
+        "burkina faso": "bf",
+        "burundi": "bi",
+        "cabo verde": "cv",
+        "cambodia": "kh",
+        "cameroon": "cm",
+        "canada": "ca",
+        "cayman islands": "ky",
+        "central african republic": "cf",
+        "chad": "td",
+        "chile": "cl",
+        "china": "cn",
+        "christmas island": "cx",
+        "cocos keeling islands": "cc",
+        "colombia": "co",
+        "comoros": "km",
+        "congo": "cg",
+        "congo democratic republic of the": "cd",
+        "cook islands": "ck",
+        "costa rica": "cr",
+        "cote divoire": "ci",
+        "croatia": "hr",
+        "cuba": "cu",
+        "curacao": "cw",
+        "cyprus": "cy",
+        "czechia": "cz",
+        "denmark": "dk",
+        "djibouti": "dj",
+        "dominica": "dm",
+        "dominican republic": "do",
+        "ecuador": "ec",
+        "egypt": "eg",
+        "el salvador": "sv",
+        "equatorial guinea": "gq",
+        "eritrea": "er",
+        "estonia": "ee",
+        "eswatini": "sz",
+        "ethiopia": "et",
+        "falkland islands malvinas": "fk",
+        "faroe islands": "fo",
+        "fiji": "fj",
+        "finland": "fi",
+        "france": "fr",
+        "french guiana": "gf",
+        "french polynesia": "pf",
+        "french southern territories": "tf",
+        "gabon": "ga",
+        "gambia": "gm",
+        "georgia": "ge",
+        "germany": "de",
+        "ghana": "gh",
+        "gibraltar": "gi",
+        "greece": "gr",
+        "greenland": "gl",
+        "grenada": "gd",
+        "guadeloupe": "gp",
+        "guam": "gu",
+        "guatemala": "gt",
+        "guernsey": "gg",
+        "guinea": "gn",
+        "guinea bissau": "gw",
+        "guyana": "gy",
+        "haiti": "ht",
+        "heard island and mcdonald islands": "hm",
+        "holy see": "va",
+        "honduras": "hn",
+        "hong kong": "hk",
+        "hungary": "hu",
+        "iceland": "is",
+        "india": "in",
+        "indonesia": "id",
+        "iran islamic republic of": "ir",
+        "iraq": "iq",
+        "ireland": "ie",
+        "isle of man": "im",
+        "israel": "il",
+        "italy": "it",
+        "jamaica": "jm",
+        "japan": "jp",
+        "jersey": "je",
+        "jordan": "jo",
+        "kazakhstan": "kz",
+        "kenya": "ke",
+        "kiribati": "ki",
+        "korea democratic peoples republic of": "kp",
+        "korea republic of": "kr",
+        "kuwait": "kw",
+        "kyrgyzstan": "kg",
+        "lao peoples democratic republic": "la",
+        "latvia": "lv",
+        "lebanon": "lb",
+        "lesotho": "ls",
+        "liberia": "lr",
+        "libya": "ly",
+        "liechtenstein": "li",
+        "lithuania": "lt",
+        "luxembourg": "lu",
+        "macao": "mo",
+        "madagascar": "mg",
+        "malawi": "mw",
+        "malaysia": "my",
+        "maldives": "mv",
+        "mali": "ml",
+        "malta": "mt",
+        "marshall islands": "mh",
+        "martinique": "mq",
+        "mauritania": "mr",
+        "mauritius": "mu",
+        "mayotte": "yt",
+        "mexico": "mx",
+        "micronesia federated states of": "fm",
+        "moldova": "md",
+        "monaco": "mc",
+        "mongolia": "mn",
+        "montenegro": "me",
+        "montserrat": "ms",
+        "morocco": "ma",
+        "mozambique": "mz",
+        "myanmar": "mm",
+        "namibia": "na",
+        "nauru": "nr",
+        "nepal": "np",
+        "netherlands": "nl",
+        "new caledonia": "nc",
+        "new zealand": "nz",
+        "nicaragua": "ni",
+        "niger": "ne",
+        "nigeria": "ng",
+        "niue": "nu",
+        "norfolk island": "nf",
+        "north macedonia": "mk",
+        "northern mariana islands": "mp",
+        "norway": "no",
+        "oman": "om",
+        "pakistan": "pk",
+        "palau": "pw",
+        "palestine state of": "ps",
+        "panama": "pa",
+        "papua new guinea": "pg",
+        "paraguay": "py",
+        "peru": "pe",
+        "philippines": "ph",
+        "pitcairn": "pn",
+        "poland": "pl",
+        "portugal": "pt",
+        "puerto rico": "pr",
+        "qatar": "qa",
+        "reunion": "re",
+        "romania": "ro",
+        "russian federation": "ru",
+        "rwanda": "rw",
+        "saint barthelemy": "bl",
+        "saint helena ascension and tristan da cunha": "sh",
+        "saint kitts and nevis": "kn",
+        "saint lucia": "lc",
+        "saint martin": "mf",
+        "saint pierre and miquelon": "pm",
+        "saint vincent and the grenadines": "vc",
+        "samoa": "ws",
+        "san marino": "sm",
+        "sao tome and principe": "st",
+        "saudi arabia": "sa",
+        "senegal": "sn",
+        "serbia": "rs",
+        "seychelles": "sc",
+        "sierra leone": "sl",
+        "singapore": "sg",
+        "sint maarten": "sx",
+        "slovakia": "sk",
+        "slovenia": "si",
+        "solomon islands": "sb",
+        "somalia": "so",
+        "south africa": "za",
+        "south georgia and the south sandwich islands": "gs",
+        "south sudan": "ss",
+        "spain": "es",
+        "sri lanka": "lk",
+        "sudan": "sd",
+        "suriname": "sr",
+        "svalbard and jan mayen": "sj",
+        "sweden": "se",
+        "switzerland": "ch",
+        "syrian arab republic": "sy",
+        "taiwan": "tw",
+        "tajikistan": "tj",
+        "tanzania united republic of": "tz",
+        "thailand": "th",
+        "timor leste": "tl",
+        "togo": "tg",
+        "tokelau": "tk",
+        "tonga": "to",
+        "trinidad and tobago": "tt",
+        "tunisia": "tn",
+        "turkey": "tr",
+        "turkmenistan": "tm",
+        "turks and caicos islands": "tc",
+        "tuvalu": "tv",
+        "uganda": "ug",
+        "ukraine": "ua",
+        "united arab emirates": "ae",
+        "united kingdom": "gb",
+        "united states of america": "us",
+        "united states minor outlying islands": "um",
+        "uruguay": "uy",
+        "uzbekistan": "uz",
+        "vanuatu": "vu",
+        "venezuela bolivarian republic of": "ve",
+        "viet nam": "vn",
+        "virgin islands british": "vg",
+        "virgin islands us": "vi",
+        "wallis and futuna": "wf",
+        "western sahara": "eh",
+        "yemen": "ye",
+        "zambia": "zm",
+        "zimbabwe": "zw"
+      };
+
+      /*
+       * getFlagCode: Given a country name, clean it and look up its ISO code.
+       * Falls back to the cleaned name with nonletters removed if not found.
+       */
+      function getFlagCode(country) {
+        if (!country) return "unknown";
+        const cleaned = cleanCountryName(country);
+        return isoMap[cleaned] || cleaned.replace(/[^a-z]/g, "") || "unknown";
+      }
+
+      // Define country-dependent icon expressions (for marker colors).
+      const euCountries = [
+        "Austria","Belgium","Bulgaria","Croatia","Cyprus",
+        "Czech Republic","Denmark","Estonia","Finland","France",
+        "Germany","Greece","Hungary","Ireland","Italy","Latvia",
+        "Lithuania","Luxembourg","Malta","Netherlands","Poland",
+        "Portugal","Romania","Slovakia","Slovenia","Spain","Sweden"
+      ];
 
       const circleIconExpression = [
         "case",
@@ -195,7 +472,7 @@
         if (country === "Russian Federation") return "#7dacff";
         if (euCountries.indexOf(country) !== -1) return "#2b2bcc";
         if (country === "China (People's Republic of)") return "#f2c403";
-        return "#f7f7f7"; // Unknown
+        return "#f7f7f7"; // Unknown or fallback
       }
       function getHeaderTextColor(country) {
         if (getHeaderColor(country).toLowerCase() === "#f7f7f7") return "#333";
@@ -308,19 +585,27 @@
             map.getCanvas().style.cursor = "pointer";
             const feature = map.queryRenderedFeatures(e.point, { layers: ["vessels-circle"] })[0];
             if (!feature) return;
+
             const localTime = new Date(feature.properties.msgtime).toLocaleString();
             const course = (feature.properties.courseOverGround != null)
                             ? feature.properties.courseOverGround : "N/A";
             const speed = (feature.properties.speedOverGround != null)
                             ? feature.properties.speedOverGround : "N/A";
             const country = feature.properties.country || "Unknown";
+
             const headerBg = getHeaderColor(country);
             const headerTextColor = getHeaderTextColor(country);
+            const flagCode = getFlagCode(country);
+
             const popupContent = `
               <div class="mapboxgl-popup-content">
                 <h3 style="background: ${headerBg}; color: ${headerTextColor};">
                   ${feature.properties.shipName || "Unnamed Ship"}
-                  <span class="popup-header-country">${country}</span>
+                  <span class="popup-header-country">
+                    <img src="flag-icons/${flagCode}.svg" alt="${country} flag"
+                         style="width:16px; height:12px; vertical-align:middle; margin-right:4px;">
+                    ${country}
+                  </span>
                 </h3>
                 <div>
                   <strong>MMSI:</strong> ${feature.properties.mmsi}<br>
@@ -334,6 +619,7 @@
               .setHTML(popupContent)
               .addTo(map);
           });
+
           map.on("mouseleave", "vessels-circle", () => {
             map.getCanvas().style.cursor = "";
             hoverPopup.remove();
@@ -342,8 +628,12 @@
 
         // Click event: Show detailed styled popup.
         map.on("click", "vessels-hit", (e) => {
+          // Remove the hover popup if it exists.
+          hoverPopup.remove();
+          
           const feature = e.features[0];
           if (!feature) return;
+
           const localTime = new Date(feature.properties.msgtime).toLocaleString();
           const course = (feature.properties.courseOverGround != null)
                           ? feature.properties.courseOverGround : "N/A";
@@ -353,13 +643,20 @@
                           ? feature.properties.trueHeading : "N/A";
           const navStatus = getNavStatusDescription(feature.properties.navigationalStatus);
           const country = feature.properties.country || "Unknown";
+
           const headerBg = getHeaderColor(country);
           const headerTextColor = getHeaderTextColor(country);
+          const flagCode = getFlagCode(country);
+
           const detailedPopupContent = `
             <div class="mapboxgl-popup-content">
               <h3 style="background: ${headerBg}; color: ${headerTextColor};">
                 ${feature.properties.shipName || "Unnamed Ship"}
-                <span class="popup-header-country">${country}</span>
+                <span class="popup-header-country">
+                  <img src="flag-icons/${flagCode}.svg" alt="${country} flag"
+                       style="width:16px; height:12px; vertical-align:middle; margin-right:4px;">
+                  ${country}
+                </span>
               </h3>
               <div>
                 <strong>MMSI:</strong> ${feature.properties.mmsi}<br>
@@ -416,13 +713,11 @@
         map.on("zoom", () => {
           const legend = document.getElementById("legend");
           const zoom = map.getZoom();
-          // Fully visible at zoom <= 4.5, fully hidden at zoom >= 5.5.
           if (zoom <= 4.5) {
             legend.style.opacity = 1;
           } else if (zoom >= 5.5) {
             legend.style.opacity = 0;
           } else {
-            // Linearly interpolate between 4.5 and 5.5.
             legend.style.opacity = 1 - (zoom - 4.5);
           }
         });
