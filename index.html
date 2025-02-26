@@ -449,22 +449,23 @@
       ];
 
       const circleIconExpression = [
-        "case",
-          ["==", ["get", "country"], "Norway"], "Norwaycircle",
-          ["==", ["get", "country"], "Russian Federation"], "Russiacircle",
-          ["==", ["get", "country"], "China (People's Republic of)"], "Chinacircle",
-          ["in", ["get", "country"], ["literal", euCountries]], "EUcircle",
-          "Unknowncircle"
-      ];
+  "case",
+    ["==", ["get", "country"], "Norway"], "Norwaycircle",
+    ["==", ["get", "country"], "Russian Federation"], "Russiacircle",
+    ["in", ["get", "country"], ["literal", ["China", "Hong Kong"]]], "Chinacircle",
+    ["in", ["get", "country"], ["literal", euCountries]], "EUcircle",
+    "Unknowncircle"
+];
 
-      const triangleIconExpression = [
-        "case",
-          ["==", ["get", "country"], "Norway"], "Norwaytriangle",
-          ["==", ["get", "country"], "Russian Federation"], "Russiatriangle",
-          ["==", ["get", "country"], "China (People's Republic of)"], "Chinatriangle",
-          ["in", ["get", "country"], ["literal", euCountries]], "EUtriangle",
-          "Unknowntriangle"
-      ];
+const triangleIconExpression = [
+  "case",
+    ["==", ["get", "country"], "Norway"], "Norwaytriangle",
+    ["==", ["get", "country"], "Russian Federation"], "Russiatriangle",
+    ["in", ["get", "country"], ["literal", ["China", "Hong Kong"]]], "Chinatriangle",
+    ["in", ["get", "country"], ["literal", euCountries]], "EUtriangle",
+    "Unknowntriangle"
+];
+
 
       // Functions to set header colors based on country.
       function getHeaderColor(country) {
@@ -506,7 +507,7 @@
               ["linear"],
               ["zoom"],
               5, 0.3,
-              7, 0.8
+              7, 0.9
             ]
           },
           paint: {
@@ -535,7 +536,7 @@
               ["linear"],
               ["zoom"],
               5, 0.5,
-              7, 0.8
+              7, 0.9
             ]
           },
           paint: {
